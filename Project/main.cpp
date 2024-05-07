@@ -1,9 +1,12 @@
+// FEITO POR Bruno Terribile e Kauyse
+
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_font.h>
 #include <vector>
 #include <ctime>
 #include <cstdlib>
+#include <cmath>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -14,8 +17,8 @@ const int BULLET_SPEED = 10;
 const int MAX_BULLETS = 5;
 const int ASTEROID_SIZE = 40;
 int ASTEROID_MIN_SPEED = 2; // Velocidade mínima dos asteroides
-int ASTEROID_MAX_SPEED = 8; // Velocidade máxima dos asteroides
-const int MAX_ASTEROIDS = 30;
+int ASTEROID_MAX_SPEED = 12; // Velocidade máxima dos asteroides
+const int MAX_ASTEROIDS = 20;
 
 class Player {
 public:
@@ -37,9 +40,13 @@ public:
 
     void fireBullet(std::vector<std::pair<float, float>>& bullets) {
         if (bullets.size() < MAX_BULLETS) {
-            bullets.push_back(std::make_pair(x + PLAYER_SIZE / 2 - BULLET_SIZE / 2, y));
+            // Calcular a posição do tiro na ponta superior central da nave
+            float bulletX = x + (PLAYER_SIZE - BULLET_SIZE) / 2; // Centralizando o tiro na nave
+            float bulletY = y - BULLET_SIZE; // Ajuste para que o tiro saia da ponta superior
+            bullets.push_back(std::make_pair(bulletX, bulletY));
         }
     }
+
 
     float getX() const { return x; }
     float getY() const { return y; }
@@ -73,6 +80,43 @@ private:
     bool alive;
     int speed;
 };
+
+void drawPlayerShip(float x, float y, float size) {
+    // Corpo principal da nave
+    al_draw_filled_triangle(x - size / 2, y + size / 2, x, y - size / 2, x + size / 2, y + size / 2, al_map_rgb(0, 0, 255));
+
+    // Parte traseira
+    al_draw_filled_rectangle(x - size / 4, y + size / 2, x + size / 4, y + size / 2 + size / 4, al_map_rgb(100, 100, 100));
+
+    // Motor
+    al_draw_filled_rectangle(x - size / 8, y + size / 4, x + size / 8, y + size / 2, al_map_rgb(255, 0, 0));
+}
+
+
+void drawStars(int numStars) {
+    for (int i = 0; i < numStars; ++i) {
+        float x = rand() % WIDTH;
+        float y = rand() % HEIGHT;
+        al_draw_pixel(x, y, al_map_rgb(255, 255, 255));
+    }
+}
+
+void drawAsteroid(float x, float y, float size) {
+    // Desenho de um asteroide em formato de pentágono irregular
+    float radius = size / 2;
+    al_draw_filled_triangle(x - radius * 0.5, y - radius, // Vertice 1
+        x + radius, y,              // Vertice 2
+        x - radius * 0.5, y + radius, // Vertice 3
+        al_map_rgb(128, 128, 128));
+    al_draw_filled_triangle(x - radius * 0.5, y - radius, // Vertice 1
+        x - radius * 1.5, y,        // Vertice 4
+        x - radius * 0.5, y + radius, // Vertice 3
+        al_map_rgb(128, 128, 128));
+    al_draw_filled_triangle(x - radius * 1.5, y,        // Vertice 4
+        x + radius, y,              // Vertice 2
+        x - radius * 0.5, y + radius, // Vertice 3
+        al_map_rgb(128, 128, 128));
+}
 
 int main() {
     ALLEGRO_DISPLAY* display = nullptr;
@@ -187,7 +231,11 @@ int main() {
 
         al_clear_to_color(al_map_rgb(0, 0, 0));
 
-        al_draw_filled_rectangle(player.getX(), player.getY(), player.getX() + PLAYER_SIZE, player.getY() + PLAYER_SIZE, al_map_rgb(0, 0, 255));
+        // Desenha o fundo do espaço com estrelas
+        drawStars(20); // Agora com apenas 20 estrelas
+
+        // Desenha a nave do jogador
+        drawPlayerShip(player.getX(), player.getY(), PLAYER_SIZE);
 
         for (const auto& bullet : bullets) {
             al_draw_filled_rectangle(bullet.first, bullet.second, bullet.first + BULLET_SIZE, bullet.second + BULLET_SIZE, al_map_rgb(255, 255, 0));
@@ -195,7 +243,7 @@ int main() {
 
         for (const auto& asteroid : asteroids) {
             if (asteroid.isAlive()) {
-                al_draw_filled_circle(asteroid.getX(), asteroid.getY(), ASTEROID_SIZE / 2, al_map_rgb(128, 128, 128));
+                drawAsteroid(asteroid.getX(), asteroid.getY(), ASTEROID_SIZE);
             }
         }
 
@@ -203,6 +251,14 @@ int main() {
 
         al_flip_display();
     }
+
+    // Tela de GAME OVER
+    al_clear_to_color(al_map_rgb(0, 0, 0)); // Preenche a tela com preto
+    ALLEGRO_FONT* font = al_create_builtin_font();
+    al_draw_textf(font, al_map_rgb(255, 255, 255), WIDTH / 2, HEIGHT / 2, ALLEGRO_ALIGN_CENTER, "SUA NAVE FOI DESTRUIDA POR UM ASTEROIDE");
+    al_draw_textf(font, al_map_rgb(255, 255, 255), WIDTH / 2, HEIGHT / 2 + 50, ALLEGRO_ALIGN_CENTER, "Asteroides destruidos: %d", destroyedAsteroids);
+    al_flip_display();
+    al_rest(2); // Aguarda por 2 segundos antes de sair do jogo
 
     al_destroy_display(display);
     al_destroy_event_queue(event_queue);
